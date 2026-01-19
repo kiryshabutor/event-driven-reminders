@@ -11,8 +11,6 @@ import (
 )
 
 var (
-	// AccessSecret читается из переменной окружения JWT_SECRET
-	// Переменная обязательна - приложение не запустится без неё
 	AccessSecret = getJWTSecret()
 )
 
