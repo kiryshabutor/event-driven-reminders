@@ -19,15 +19,15 @@ services:
       timeout: 5s
       retries: 5
 
-  # Auth
-  auth:
+  # Auth Service (gRPC)
+  auth-service:
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: jwt-auth
+      dockerfile: build/auth-service.Dockerfile
+    container_name: jwt-auth-service
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "${GRPC_PORT}:${GRPC_PORT}"
     environment:
       DB_HOST: database
       DB_PORT: ${DB_PORT}
@@ -36,9 +36,27 @@ services:
       DB_NAME: ${DB_NAME}
       DB_SSLMODE: ${DB_SSLMODE}
       JWT_SECRET: ${JWT_SECRET}
+      GRPC_PORT: ${GRPC_PORT}
     depends_on:
       database:
         condition: service_healthy
 
+  # API Gateway (HTTP)
+  api-gateway:
+    build:
+      context: .
+      dockerfile: build/api-gateway.Dockerfile
+    container_name: jwt-api-gateway
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT}:${HTTP_PORT}"
+    environment:
+      AUTH_SERVICE_ADDR: auth-service:${GRPC_PORT}
+      HTTP_PORT: ${HTTP_PORT}
+    depends_on:
+      - auth-service
+
 volumes:
   postgres_data:
+
+
