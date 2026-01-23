@@ -39,15 +39,13 @@ func (c *DatabaseConfig) ConnectionString() string {
 func ConnectDatabase(config *DatabaseConfig) (*sqlx.DB, error) {
 	db, err := sqlx.Connect("pgx", config.ConnectionString())
 	if err != nil {
-		return nil, fmt.Errorf("не удалось подключиться к БД: %w", err)
+		return nil, fmt.Errorf("failed to connect to DB: %w", err)
 	}
 
-	// Проверка подключения
 	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("не удалось проверить соединение с БД: %w", err)
+		return nil, fmt.Errorf("failed to verify DB connection: %w", err)
 	}
 
-	// Настройка пула соединений
 	db.SetMaxOpenConns(25)
 	db.SetMaxIdleConns(5)
 	db.SetConnMaxLifetime(5 * time.Minute)
