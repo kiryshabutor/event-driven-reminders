@@ -26,7 +26,7 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-// getAccessSecret возвращает JWT секрет с ленивой инициализацией
+// getAccessSecret returns JWT secret with lazy initialization
 func getAccessSecret() []byte {
 	once.Do(func() {
 		accessSecret = getJWTSecret()
@@ -61,7 +61,7 @@ func ValidateAccessToken(tokenString string) (*Claims, error) {
 
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, errors.New("неожиданный метод подписи")
+			return nil, errors.New("unexpected signing method")
 		}
 		return getAccessSecret(), nil
 	})
@@ -71,7 +71,7 @@ func ValidateAccessToken(tokenString string) (*Claims, error) {
 	}
 
 	if !token.Valid {
-		return nil, errors.New("невалидный токен")
+		return nil, errors.New("invalid token")
 	}
 
 	return claims, nil
