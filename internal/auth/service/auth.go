@@ -101,10 +101,16 @@ func (s *AuthService) Refresh(refreshToken string) (*TokenResponse, error) {
 	}, nil
 }
 
-func (s *AuthService) ValidateToken(token string) (string, error) {
+func (s *AuthService) ValidateToken(token string) (string, int64, error) {
 	claims, err := utils.ValidateAccessToken(token)
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
-	return claims.Username, nil
+
+	user, err := s.store.GetUserByUsername(claims.Username)
+	if err != nil {
+		return "", 0, err
+	}
+
+	return claims.Username, int64(user.ID), nil
 }

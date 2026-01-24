@@ -78,7 +78,7 @@ func (s *AuthServer) ValidateToken(ctx context.Context, req *pb.ValidateTokenReq
 		}, nil
 	}
 
-	username, err := s.service.ValidateToken(req.AccessToken)
+	username, userID, err := s.service.ValidateToken(req.AccessToken)
 	if err != nil {
 		return &pb.ValidateTokenResponse{
 			Valid: false,
@@ -89,5 +89,6 @@ func (s *AuthServer) ValidateToken(ctx context.Context, req *pb.ValidateTokenReq
 	return &pb.ValidateTokenResponse{
 		Valid:    true,
 		Username: username,
+		UserId:   userID,
 	}, nil
 }

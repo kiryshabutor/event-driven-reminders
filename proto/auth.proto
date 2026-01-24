@@ -50,5 +50,6 @@ message ValidateTokenRequest {
 message ValidateTokenResponse {
   bool valid = 1;
   string username = 2;
-  string error = 3;
+  int64 user_id = 3;
+  string error = 4;
 }

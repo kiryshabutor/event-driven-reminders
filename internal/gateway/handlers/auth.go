@@ -112,8 +112,9 @@ func (h *AuthHandler) AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			return c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Invalid token"})
 		}
 
-		// Add username to context
+		// Add username and user_id to context
 		c.Set("username", resp.Username)
+		c.Set("user_id", resp.UserId)
 		return next(c)
 	}
 }
