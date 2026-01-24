@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package reminder;
+
+option go_package = "github.com/kiribu/jwt-practice/internal/reminder/grpc/pb";
+
+service ReminderService {
+  rpc CreateReminder(CreateReminderRequest) returns (ReminderResponse);
+  rpc GetReminders(GetRemindersRequest) returns (GetRemindersResponse);
+  rpc GetReminder(GetReminderRequest) returns (ReminderResponse);
+  rpc UpdateReminder(UpdateReminderRequest) returns (ReminderResponse);
+  rpc DeleteReminder(DeleteReminderRequest) returns (DeleteReminderResponse);
+}
+
+message CreateReminderRequest {
+  int64  user_id     = 1;
+  string title       = 2;
+  string description = 3;
+  string remind_at   = 4;
+}
+
+message GetRemindersRequest {
+  int64 user_id = 1;
+}
+
+message GetReminderRequest {
+  int64 user_id = 1;
+  int64 id      = 2;
+}
+
+message UpdateReminderRequest {
+  int64  user_id     = 1;
+  int64  id          = 2;
+  string title       = 3;
+  string description = 4;
+  string remind_at   = 5;
+}
+
+message DeleteReminderRequest {
+  int64 user_id = 1;
+  int64 id      = 2;
+}
+
+message ReminderResponse {
+  int64  id          = 1;
+  int64  user_id     = 2;
+  string title       = 3;
+  string description = 4;
+  string remind_at   = 5;
+  bool   is_sent     = 6;
+  string created_at  = 7;
+  string updated_at  = 8;
+}
+
+message GetRemindersResponse {
+  repeated ReminderResponse reminders = 1;
+}
+
+message DeleteReminderResponse {
+  bool   success = 1;
+  string message = 2;
+}
