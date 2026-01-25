@@ -38,9 +38,10 @@ func (c *ReminderClient) Create(ctx context.Context, userID int64, title, descri
 	})
 }
 
-func (c *ReminderClient) GetAll(ctx context.Context, userID int64) (*pb.GetRemindersResponse, error) {
+func (c *ReminderClient) GetAll(ctx context.Context, userID int64, status string) (*pb.GetRemindersResponse, error) {
 	return c.client.GetReminders(ctx, &pb.GetRemindersRequest{
 		UserId: userID,
+		Status: status,
 	})
 }
 

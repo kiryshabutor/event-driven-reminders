@@ -21,6 +21,7 @@ message CreateReminderRequest {
 
 message GetRemindersRequest {
   int64 user_id = 1;
+  string status = 2; // "pending", "sent", or empty for all
 }
 
 message GetReminderRequest {

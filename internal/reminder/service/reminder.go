@@ -33,8 +33,8 @@ func (s *ReminderService) Create(userID int64, title, description, remindAtStr s
 	return s.storage.Create(userID, title, description, remindAt)
 }
 
-func (s *ReminderService) GetByUserID(userID int64) ([]models.Reminder, error) {
-	return s.storage.GetByUserID(userID)
+func (s *ReminderService) GetByUserID(userID int64, status string) ([]models.Reminder, error) {
+	return s.storage.GetByUserID(userID, status)
 }
 
 func (s *ReminderService) GetByID(userID, id int64) (*models.Reminder, error) {

@@ -10,7 +10,7 @@ import (
 
 type ReminderStorage interface {
 	Create(userID int64, title, description string, remindAt time.Time) (*models.Reminder, error)
-	GetByUserID(userID int64) ([]models.Reminder, error)
+	GetByUserID(userID int64, status string) ([]models.Reminder, error)
 	GetByID(userID, id int64) (*models.Reminder, error)
 	Update(userID, id int64, title, description string, remindAt time.Time) (*models.Reminder, error)
 	Delete(userID, id int64) error
@@ -40,13 +40,27 @@ func (s *PostgresStorage) Create(userID int64, title, description string, remind
 	return &reminder, nil
 }
 
-func (s *PostgresStorage) GetByUserID(userID int64) ([]models.Reminder, error) {
+func (s *PostgresStorage) GetByUserID(userID int64, status string) ([]models.Reminder, error) {
 	var reminders []models.Reminder
-	err := s.db.Select(&reminders,
-		`SELECT id, user_id, title, description, remind_at, is_sent, created_at, updated_at
-		 FROM reminders WHERE user_id = $1 ORDER BY remind_at ASC`,
-		userID,
-	)
+	var query string
+	var args []interface{}
+
+	baseQuery := `SELECT id, user_id, title, description, remind_at, is_sent, created_at, updated_at
+		 FROM reminders WHERE user_id = $1`
+
+	switch status {
+	case "pending":
+		query = baseQuery + " AND is_sent = FALSE ORDER BY remind_at ASC"
+		args = []interface{}{userID}
+	case "sent":
+		query = baseQuery + " AND is_sent = TRUE ORDER BY remind_at DESC"
+		args = []interface{}{userID}
+	default:
+		query = baseQuery + " ORDER BY remind_at ASC"
+		args = []interface{}{userID}
+	}
+
+	err := s.db.Select(&reminders, query, args...)
 	if err != nil {
 		return nil, err
 	}

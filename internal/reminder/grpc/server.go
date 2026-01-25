@@ -29,7 +29,7 @@ func (s *ReminderServer) CreateReminder(ctx context.Context, req *pb.CreateRemin
 }
 
 func (s *ReminderServer) GetReminders(ctx context.Context, req *pb.GetRemindersRequest) (*pb.GetRemindersResponse, error) {
-	reminders, err := s.service.GetByUserID(req.UserId)
+	reminders, err := s.service.GetByUserID(req.UserId, req.Status)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
