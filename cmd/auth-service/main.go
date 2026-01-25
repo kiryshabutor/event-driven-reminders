@@ -23,10 +23,8 @@ func init() {
 }
 
 func main() {
-	// Load DB config
 	dbConfig := config.LoadDatabaseConfig()
 
-	// Connect to DB
 	db, err := config.ConnectDatabase(dbConfig)
 	if err != nil {
 		log.Fatalf("DB connection error: %v", err)
@@ -35,16 +33,12 @@ func main() {
 
 	log.Println("Auth Service: Successfully connected to PostgreSQL")
 
-	// Initialize layers
 	store := storage.NewPostgresStorage(db)
 	authService := service.NewAuthService(store)
 	authServer := authgrpc.NewAuthServer(authService)
-
-	// Create gRPC server
 	grpcServer := grpc.NewServer()
 	pb.RegisterAuthServiceServer(grpcServer, authServer)
 
-	// Start on port 50051
 	port := getEnv("GRPC_PORT", "50051")
 	listener, err := net.Listen("tcp", ":"+port)
 	if err != nil {
@@ -53,7 +47,6 @@ func main() {
 
 	log.Printf("Auth Service (gRPC) started on port %s\n", port)
 
-	// Graceful shutdown
 	go func() {
 		if err := grpcServer.Serve(listener); err != nil {
 			log.Fatalf("gRPC server error: %v", err)
