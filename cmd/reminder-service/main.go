@@ -39,7 +39,28 @@ func main() {
 	log.Println("Reminder Service: Successfully connected to PostgreSQL")
 
 	store := storage.NewPostgresStorage(db)
-	reminderService := service.NewReminderService(store)
+
+	// Kafka & Worker (Initialize Brokers first) - Moved from below
+	brokersEnv := getEnv("KAFKA_BROKERS", "kafka:9092")
+	brokers := strings.Split(brokersEnv, ",")
+
+	// Producer for Notifications (for Worker)
+	notificationProducer := kafka.NewProducer(brokers, "notifications")
+	defer func() {
+		if err := notificationProducer.Close(); err != nil {
+			log.Printf("Failed to close notification producer: %v", err)
+		}
+	}()
+
+	// Producer for Lifecycle Events (for Service)
+	lifecycleProducer := kafka.NewProducer(brokers, "reminder_lifecycle")
+	defer func() {
+		if err := lifecycleProducer.Close(); err != nil {
+			log.Printf("Failed to close lifecycle producer: %v", err)
+		}
+	}()
+
+	reminderService := service.NewReminderService(store, lifecycleProducer)
 	reminderServer := remindergrpc.NewReminderServer(reminderService)
 
 	grpcServer := grpc.NewServer()
@@ -53,23 +74,14 @@ func main() {
 
 	log.Printf("Reminder Service (gRPC) started on port %s\n", port)
 
-	// Kafka & Worker
-	brokersEnv := getEnv("KAFKA_BROKERS", "kafka:9092")
-	brokers := strings.Split(brokersEnv, ",")
-	producer := kafka.NewProducer(brokers, "notifications")
-	defer func() {
-		if err := producer.Close(); err != nil {
-			log.Printf("Failed to close Kafka producer: %v", err)
-		}
-	}()
-
+	// Worker Configuration
 	intervalStr := getEnv("WORKER_INTERVAL", "5s")
 	interval, err := time.ParseDuration(intervalStr)
 	if err != nil {
 		log.Fatalf("Invalid WORKER_INTERVAL: %v", err)
 	}
 
-	workerInstance := worker.NewWorker(store, producer, interval)
+	workerInstance := worker.NewWorker(store, notificationProducer, interval)
 
 	// Context for worker
 	ctx, cancel := context.WithCancel(context.Background())

@@ -30,18 +30,21 @@ func (p *Producer) Close() error {
 }
 
 func (p *Producer) SendNotification(reminder models.Reminder) error {
-	payload, err := json.Marshal(reminder)
+	return p.SendEvent(fmt.Sprintf("%d", reminder.ID), reminder)
+}
+
+func (p *Producer) SendEvent(key string, payload interface{}) error {
+	data, err := json.Marshal(payload)
 	if err != nil {
-		return fmt.Errorf("failed to marshal reminder: %w", err)
+		return fmt.Errorf("failed to marshal payload: %w", err)
 	}
 
 	msg := kafka.Message{
-		Key:   []byte(fmt.Sprintf("%d", reminder.ID)),
-		Value: payload,
+		Key:   []byte(key),
+		Value: data,
 		Time:  time.Now(),
 	}
 
-	// Use a context with timeout for sending
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -50,6 +53,6 @@ func (p *Producer) SendNotification(reminder models.Reminder) error {
 		return fmt.Errorf("failed to write message to kafka: %w", err)
 	}
 
-	log.Printf("Sent reminder %d to Kafka topic %s", reminder.ID, p.writer.Topic)
+	log.Printf("Sent message to Kafka topic %s (key=%s)", p.writer.Topic, key)
 	return nil
 }
