@@ -1,18 +1,23 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/kiribu/jwt-practice/config"
 	remindergrpc "github.com/kiribu/jwt-practice/internal/reminder/grpc"
 	"github.com/kiribu/jwt-practice/internal/reminder/grpc/pb"
+	"github.com/kiribu/jwt-practice/internal/reminder/kafka"
 	"github.com/kiribu/jwt-practice/internal/reminder/service"
 	"github.com/kiribu/jwt-practice/internal/reminder/storage"
+	"github.com/kiribu/jwt-practice/internal/reminder/worker"
 	"google.golang.org/grpc"
 )
 
@@ -48,6 +53,31 @@ func main() {
 
 	log.Printf("Reminder Service (gRPC) started on port %s\n", port)
 
+	// Kafka & Worker
+	brokersEnv := getEnv("KAFKA_BROKERS", "kafka:9092")
+	brokers := strings.Split(brokersEnv, ",")
+	producer := kafka.NewProducer(brokers, "notifications")
+	defer func() {
+		if err := producer.Close(); err != nil {
+			log.Printf("Failed to close Kafka producer: %v", err)
+		}
+	}()
+
+	intervalStr := getEnv("WORKER_INTERVAL", "5s")
+	interval, err := time.ParseDuration(intervalStr)
+	if err != nil {
+		log.Fatalf("Invalid WORKER_INTERVAL: %v", err)
+	}
+
+	workerInstance := worker.NewWorker(store, producer, interval)
+
+	// Context for worker
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Start Worker
+	go workerInstance.Start(ctx)
+
 	go func() {
 		if err := grpcServer.Serve(listener); err != nil {
 			log.Fatalf("gRPC server error: %v", err)
@@ -59,6 +89,10 @@ func main() {
 	<-quit
 
 	log.Println("Shutting down Reminder Service...")
+
+	// Stop worker first
+	cancel()
+
 	grpcServer.GracefulStop()
 }
 

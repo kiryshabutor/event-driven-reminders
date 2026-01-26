@@ -14,6 +14,8 @@ type ReminderStorage interface {
 	GetByID(userID, id int64) (*models.Reminder, error)
 	Update(userID, id int64, title, description string, remindAt time.Time) (*models.Reminder, error)
 	Delete(userID, id int64) error
+	GetPending() ([]models.Reminder, error)
+	MarkAsSent(id int64) error
 }
 
 type PostgresStorage struct {
@@ -114,4 +116,25 @@ func (s *PostgresStorage) Delete(userID, id int64) error {
 	}
 
 	return nil
+}
+
+func (s *PostgresStorage) GetPending() ([]models.Reminder, error) {
+	var reminders []models.Reminder
+	err := s.db.Select(&reminders,
+		`SELECT id, user_id, title, description, remind_at, is_sent, created_at, updated_at
+		 FROM reminders 
+		 WHERE is_sent = FALSE AND remind_at <= NOW()`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return reminders, nil
+}
+
+func (s *PostgresStorage) MarkAsSent(id int64) error {
+	_, err := s.db.Exec(
+		`UPDATE reminders SET is_sent = TRUE, updated_at = NOW() WHERE id = $1`,
+		id,
+	)
+	return err
 }
