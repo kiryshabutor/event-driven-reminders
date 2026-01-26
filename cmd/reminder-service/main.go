@@ -40,7 +40,7 @@ func main() {
 
 	store := storage.NewPostgresStorage(db)
 
-	// Kafka & Worker (Initialize Brokers first) - Moved from below
+	// Kafka & Worker
 	brokersEnv := getEnv("KAFKA_BROKERS", "kafka:9092")
 	brokers := strings.Split(brokersEnv, ",")
 
