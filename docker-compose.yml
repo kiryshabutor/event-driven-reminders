@@ -126,6 +126,32 @@ services:
       kafka-init:
         condition: service_completed_successfully
 
+  # Analytics Service (gRPC)
+  analytics-service:
+    build:
+      context: .
+      dockerfile: build/analytics-service.Dockerfile
+    container_name: analytics-service
+    restart: unless-stopped
+    ports:
+      - "${ANALYTICS_GRPC_PORT:-50053}:${ANALYTICS_GRPC_PORT:-50053}"
+    environment:
+      DB_HOST: database
+      DB_PORT: 5432
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DB_SSLMODE: ${DB_SSLMODE}
+      ANALYTICS_GRPC_PORT: ${ANALYTICS_GRPC_PORT:-50053}
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_TOPIC_LIFECYCLE: ${KAFKA_TOPIC_LIFECYCLE}
+      TZ: ${TZ:-Europe/Moscow}
+    depends_on:
+      database:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+
   # API Gateway (HTTP)
   api-gateway:
     build:
@@ -138,11 +164,13 @@ services:
     environment:
       AUTH_SERVICE_ADDR: auth-service:${GRPC_PORT}
       REMINDER_SERVICE_ADDR: reminder-service:${REMINDER_GRPC_PORT}
+      ANALYTICS_SERVICE_ADDR: analytics-service:${ANALYTICS_GRPC_PORT:-50053}
       HTTP_PORT: ${HTTP_PORT}
       TZ: ${TZ:-Europe/Moscow}
     depends_on:
       - auth-service
       - reminder-service
+      - analytics-service
 
   # Notification Service
   notification-service:
