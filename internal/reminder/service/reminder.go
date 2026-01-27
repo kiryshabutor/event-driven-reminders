@@ -58,7 +58,6 @@ func (s *ReminderService) Update(userID, id int64, title, description, remindAtS
 		return nil, errors.New("invalid remind_at format, use RFC3339: 2026-01-25T10:00:00+03:00")
 	}
 
-	// Storage handles both reminder update and outbox event in a transaction
 	reminder, err := s.storage.Update(userID, id, title, description, remindAt)
 	if err != nil {
 		return nil, err
@@ -68,6 +67,5 @@ func (s *ReminderService) Update(userID, id int64, title, description, remindAtS
 }
 
 func (s *ReminderService) Delete(userID, id int64) error {
-	// Storage handles both reminder deletion and outbox event in a transaction
 	return s.storage.Delete(userID, id)
 }
