@@ -23,7 +23,7 @@ func main() {
 
 	brokersEnv := getEnv("KAFKA_BROKERS", "kafka:9092")
 	brokers := strings.Split(brokersEnv, ",")
-	topic := getEnv("KAFKA_TOPIC", "notifications")
+	topic := getEnv("KAFKA_TOPIC_NOTIFICATIONS", "notifications")
 	groupID := getEnv("KAFKA_GROUP_ID", "notification-workers")
 
 	consumer := kafka.NewConsumer(brokers, topic, groupID)
