@@ -1,5 +1,3 @@
-```sql
--- Create reminders table
 CREATE TABLE IF NOT EXISTS reminders (
     id          UUID PRIMARY KEY,
     user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -11,9 +9,5 @@ CREATE TABLE IF NOT EXISTS reminders (
     updated_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Index for fast user lookup
 CREATE INDEX idx_reminders_user_id ON reminders(user_id);
-
--- Index for scheduler (future use)
 CREATE INDEX idx_reminders_due ON reminders(remind_at) WHERE is_sent = FALSE;
-```
