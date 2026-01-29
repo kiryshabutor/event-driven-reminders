@@ -1,0 +1,111 @@
+# Сервис Аутентификации и Напоминаний (JWT Auth & Reminders)
+
+Этот проект представляет собой микросервисную архитектуру на Go, реализующую систему аутентификации JWT и сервис отложенных напоминаний.
+
+## Основные возможности
+
+*   **Аутентификация & Авторизация**: Выдача и валидация JWT (Access & Refresh токены).
+*   **Микросервисы**:
+    *   **Auth Service**: gRPC сервис для регистрации, входа и управления токенами.
+    *   **Reminder Service**: Сервис для создания и управления напоминаниями.
+    *   **API Gateway**: Единая точка входа (REST API), проксирующая запросы к внутренним gRPC сервисам.
+*   **Асинхронные уведомления**: Использование Kafka для обработки жизненного цикла напоминаний и отправки уведомлений.
+*   **Хранение данных**: PostgreSQL (основные данные), Redis (кэширование/blacklist токенов).
+
+## Технологический стек
+
+*   **Язык**: Go (Golang)
+*   **Database**: PostgreSQL
+*   **Cache**: Redis
+*   **Message Broker**: Apache Kafka
+*   **Communication**: gRPC (Protobuf), REST (HTTP/JSON)
+*   **Containerization**: Docker, Docker Compose
+
+## Установка и запуск
+
+### Предварительные требования
+
+*   Go 1.22+
+*   Docker & Docker Compose
+
+### Запуск через Docker Compose (Рекомендуется)
+
+Самый простой способ запустить все компоненты системы.
+
+1.  Клонируйте репозиторий:
+    ```bash
+    git clone https://github.com/yourusername/jwt-project.git
+    cd jwt-project
+    ```
+
+2.  Создайте файл конфигурации:
+    ```bash
+    cp .env.example .env
+    ```
+    При необходимости отредактируйте `.env` под ваши нужды (пароли, порты).
+
+3.  Запустите сервисы:
+    ```bash
+    docker-compose up --build
+    ```
+
+При этом поднимутся: PostgreSQL, Redis, Zookeeper, Kafka, Auth Service, Reminder Service и API Gateway.
+
+### Локальный запуск (для разработки)
+
+Если вы хотите запустить Go-сервисы локально (вне Docker), вам все равно понадобятся базы данных и Kafka.
+
+1.  Запустите инфраструктуру (БД, брокеры):
+    ```bash
+    docker-compose up -d postgres redis zookeeper kafka
+    ```
+
+2.  Примените миграции (если не настроено авто-применение):
+    ```bash
+    # Команды для миграций (пример с goose)
+    # goose postgres "user=postgres dbname=jwt_app sslmode=disable" up
+    ```
+
+3.  Запустите сервисы по отдельности (в разных терминалах):
+
+    *   **Auth Service**:
+        ```bash
+        go run cmd/auth-service/main.go
+        ```
+
+    *   **Reminder Service**:
+        ```bash
+        go run cmd/reminder-service/main.go
+        ```
+
+    *   **API Gateway**:
+        ```bash
+        go run cmd/api-gateway/main.go
+        ```
+
+## Конфигурация
+
+Все настройки хранятся в файле `.env`. Пример файла находится в `.env.example`.
+
+Основные переменные:
+*   `DB_*`: Настройки подключения к PostgreSQL.
+*   `JWT_SECRET`: Секретный ключ для подписи токенов. **Обязательно смените в продакшене!**
+*   `GRPC_PORT`: Порты для gRPC сервисов.
+*   `KAFKA_BROKERS`: Адреса брокеров Kafka.
+
+## Структура проекта
+
+*   `/cmd`: Точки входа (main.go) для каждого сервиса.
+*   `/internal`: Внутренняя логика (Biz logic, repository, service).
+*   `/proto`: Protobuf определения для gRPC.
+*   `/migrations`: SQL файлы миграций базы данных.
+*   `/pkg`: Общие библиотеки и утилиты.
+
+## API Эндпоинты
+
+API доступен через **API Gateway** (по умолчанию порт `8080`).
+
+*   `POST /auth/register`: Регистрация пользователя.
+*   `POST /auth/login`: Вход и получение токенов.
+*   `POST /reminders`: Создание напоминания (требует Auth).
+*   **[Полная документация API](docs/API.md)**
