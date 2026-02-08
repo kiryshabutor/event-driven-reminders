@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -19,7 +20,7 @@ func NewReminderService(storage storage.ReminderStorage) *ReminderService {
 	}
 }
 
-func (s *ReminderService) Create(userID uuid.UUID, title, description, remindAtStr string) (*models.Reminder, error) {
+func (s *ReminderService) Create(ctx context.Context, userID uuid.UUID, title, description, remindAtStr string) (*models.Reminder, error) {
 	if title == "" {
 		return nil, errors.New("title is required")
 	}
@@ -33,7 +34,7 @@ func (s *ReminderService) Create(userID uuid.UUID, title, description, remindAtS
 		return nil, errors.New("remind_at must be in the future")
 	}
 
-	reminder, err := s.storage.Create(userID, title, description, remindAt)
+	reminder, err := s.storage.Create(ctx, userID, title, description, remindAt)
 	if err != nil {
 		return nil, err
 	}
@@ -41,15 +42,15 @@ func (s *ReminderService) Create(userID uuid.UUID, title, description, remindAtS
 	return reminder, nil
 }
 
-func (s *ReminderService) GetByUserID(userID uuid.UUID, status string) ([]models.Reminder, error) {
-	return s.storage.GetByUserID(userID, status)
+func (s *ReminderService) GetByUserID(ctx context.Context, userID uuid.UUID, status string) ([]models.Reminder, error) {
+	return s.storage.GetByUserID(ctx, userID, status)
 }
 
-func (s *ReminderService) GetByID(userID, id uuid.UUID) (*models.Reminder, error) {
-	return s.storage.GetByID(userID, id)
+func (s *ReminderService) GetByID(ctx context.Context, userID, id uuid.UUID) (*models.Reminder, error) {
+	return s.storage.GetByID(ctx, userID, id)
 }
 
-func (s *ReminderService) Update(userID, id uuid.UUID, title, description, remindAtStr string) (*models.Reminder, error) {
+func (s *ReminderService) Update(ctx context.Context, userID, id uuid.UUID, title, description, remindAtStr string) (*models.Reminder, error) {
 	if title == "" {
 		return nil, errors.New("title is required")
 	}
@@ -59,7 +60,11 @@ func (s *ReminderService) Update(userID, id uuid.UUID, title, description, remin
 		return nil, errors.New("invalid remind_at format, use RFC3339: 2026-01-25T10:00:00+03:00")
 	}
 
-	reminder, err := s.storage.Update(userID, id, title, description, remindAt)
+	if remindAt.Before(time.Now()) {
+		return nil, errors.New("remind_at must be in the future")
+	}
+
+	reminder, err := s.storage.Update(ctx, userID, id, title, description, remindAt)
 	if err != nil {
 		return nil, err
 	}
@@ -67,6 +72,6 @@ func (s *ReminderService) Update(userID, id uuid.UUID, title, description, remin
 	return reminder, nil
 }
 
-func (s *ReminderService) Delete(userID, id uuid.UUID) error {
-	return s.storage.Delete(userID, id)
+func (s *ReminderService) Delete(ctx context.Context, userID, id uuid.UUID) error {
+	return s.storage.Delete(ctx, userID, id)
 }

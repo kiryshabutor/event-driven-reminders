@@ -47,13 +47,13 @@ func (w *OutboxWorker) Start(ctx context.Context) {
 			slog.Info("Stopping Outbox Worker...")
 			return
 		case <-ticker.C:
-			w.processOutbox()
+			w.processOutbox(ctx)
 		}
 	}
 }
 
-func (w *OutboxWorker) processOutbox() {
-	events, err := w.storage.GetPendingOutboxEvents(w.batchSize)
+func (w *OutboxWorker) processOutbox(ctx context.Context) {
+	events, err := w.storage.GetPendingOutboxEvents(ctx, w.batchSize)
 	if err != nil {
 		slog.Error("Error fetching outbox events", "error", err)
 		return
@@ -67,19 +67,19 @@ func (w *OutboxWorker) processOutbox() {
 		if err := w.processEvent(event); err != nil {
 			slog.Error("Error processing outbox event", "event_id", event.ID, "error", err)
 
-			if err := w.storage.IncrementOutboxRetryCount(event.ID, err.Error()); err != nil {
+			if err := w.storage.IncrementOutboxRetryCount(ctx, event.ID, err.Error()); err != nil {
 				slog.Error("Failed to update retry count", "event_id", event.ID, "error", err)
 			}
 			continue
 		}
 
-		if err := w.storage.MarkOutboxEventAsSent(event.ID); err != nil {
+		if err := w.storage.MarkOutboxEventAsSent(ctx, event.ID); err != nil {
 			slog.Error("Failed to mark event as sent", "event_id", event.ID, "error", err)
 		}
 	}
 }
 
-func (w *OutboxWorker) processEvent(event storage.OutboxEvent) error {
+func (w *OutboxWorker) processEvent(event models.OutboxEvent) error {
 	key := fmt.Sprintf("%d", event.UserID)
 
 	switch event.EventType {
