@@ -32,13 +32,13 @@ func (w *NotificationWorker) Start(ctx context.Context) {
 			slog.Info("Stopping reminder worker...")
 			return
 		case <-ticker.C:
-			w.processPending()
+			w.processPending(ctx)
 		}
 	}
 }
 
-func (w *NotificationWorker) processPending() {
-	reminders, err := w.storage.GetPending()
+func (w *NotificationWorker) processPending(ctx context.Context) {
+	reminders, err := w.storage.GetPending(ctx)
 	if err != nil {
 		slog.Error("Error fetching pending reminders", "error", err)
 		return
@@ -49,7 +49,7 @@ func (w *NotificationWorker) processPending() {
 	}
 
 	for _, reminder := range reminders {
-		if err := w.storage.CreateNotificationEventsAndMarkSent(reminder); err != nil {
+		if err := w.storage.CreateNotificationEventsAndMarkSent(ctx, reminder); err != nil {
 			slog.Error("Error creating notification events", "reminder_id", reminder.ID, "error", err)
 		} else {
 			slog.Debug("Successfully created notification events", "reminder_id", reminder.ID)

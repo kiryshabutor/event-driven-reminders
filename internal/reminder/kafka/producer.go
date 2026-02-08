@@ -31,7 +31,7 @@ func (p *Producer) Close() error {
 }
 
 func (p *Producer) SendNotification(reminder models.Reminder) error {
-	return p.SendEvent(fmt.Sprintf("%d", reminder.UserID), reminder)
+	return p.SendEvent(fmt.Sprintf("%d", reminder.ID), reminder)
 }
 
 func (p *Producer) SendEvent(key string, payload interface{}) error {

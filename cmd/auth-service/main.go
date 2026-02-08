@@ -28,14 +28,16 @@ func main() {
 
 	dbConfig := config.LoadDatabaseConfig()
 
-	db, err := config.ConnectDatabase(dbConfig)
+	db, err := config.ConnectGormDatabase(dbConfig)
 	if err != nil {
 		slog.Error("DB connection error", "error", err)
 		os.Exit(1)
 	}
-	defer db.Close()
 
-	slog.Info("Auth Service: Successfully connected to PostgreSQL")
+	sqlDB, _ := db.DB()
+	defer sqlDB.Close()
+
+	slog.Info("Auth Service: Successfully connected to PostgreSQL with GORM")
 
 	redisAddr := getEnv("REDIS_ADDR", "localhost:6379")
 	redisPassword := getEnv("REDIS_PASSWORD", "")

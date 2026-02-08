@@ -48,12 +48,12 @@ var (
 	hasSpecialRegex = regexp.MustCompile(`[!#$%*]`)
 )
 
-func (s *AuthService) Register(username, password string) (*UserResponse, error) {
+func (s *AuthService) Register(ctx context.Context, username, password string) (*UserResponse, error) {
 	if err := s.validateCredentials(username, password); err != nil {
 		return nil, err
 	}
 
-	user, err := s.store.CreateUser(username, password)
+	user, err := s.store.CreateUser(ctx, username, password)
 	if err != nil {
 		return nil, err
 	}
@@ -65,8 +65,8 @@ func (s *AuthService) Register(username, password string) (*UserResponse, error)
 	}, nil
 }
 
-func (s *AuthService) Login(username, password string) (*TokenResponse, error) {
-	user, err := s.store.ValidatePassword(username, password)
+func (s *AuthService) Login(ctx context.Context, username, password string) (*TokenResponse, error) {
+	user, err := s.store.ValidatePassword(ctx, username, password)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func (s *AuthService) Login(username, password string) (*TokenResponse, error) {
 	}
 
 	expiresAt := time.Now().Add(utils.RefreshTokenDuration)
-	if err := s.store.SaveRefreshToken(refreshToken, user.ID, expiresAt); err != nil {
+	if err := s.store.SaveRefreshToken(ctx, refreshToken, user.ID, expiresAt); err != nil {
 		return nil, err
 	}
 
@@ -93,13 +93,13 @@ func (s *AuthService) Login(username, password string) (*TokenResponse, error) {
 	}, nil
 }
 
-func (s *AuthService) Refresh(refreshToken string) (*TokenResponse, error) {
-	userID, err := s.store.ValidateRefreshToken(refreshToken)
+func (s *AuthService) Refresh(ctx context.Context, refreshToken string) (*TokenResponse, error) {
+	userID, err := s.store.ValidateRefreshToken(ctx, refreshToken)
 	if err != nil {
 		return nil, err
 	}
 
-	user, err := s.store.GetUserByID(userID)
+	user, err := s.store.GetUserByID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -114,9 +114,9 @@ func (s *AuthService) Refresh(refreshToken string) (*TokenResponse, error) {
 		return nil, err
 	}
 
-	s.store.DeleteRefreshToken(refreshToken)
+	s.store.DeleteRefreshToken(ctx, refreshToken)
 	expiresAt := time.Now().Add(utils.RefreshTokenDuration)
-	if err := s.store.SaveRefreshToken(newRefreshToken, user.ID, expiresAt); err != nil {
+	if err := s.store.SaveRefreshToken(ctx, newRefreshToken, user.ID, expiresAt); err != nil {
 		return nil, err
 	}
 
@@ -154,7 +154,7 @@ func (s *AuthService) ValidateToken(ctx context.Context, token string) (string, 
 
 	// Cache Miss
 	slog.Debug("Cache miss for user", "username", claims.Username)
-	user, err := s.store.GetUserByUsername(claims.Username)
+	user, err := s.store.GetUserByUsername(ctx, claims.Username)
 	if err != nil {
 		return "", uuid.Nil, err
 	}
@@ -186,7 +186,7 @@ func (s *AuthService) GetProfile(ctx context.Context, username string) (*UserRes
 
 	// Cache Miss
 	slog.Debug("Cache miss for user profile", "username", username)
-	user, err := s.store.GetUserByUsername(username)
+	user, err := s.store.GetUserByUsername(ctx, username)
 	if err != nil {
 		return nil, err
 	}

@@ -7,12 +7,16 @@ import (
 )
 
 type Reminder struct {
-	ID          uuid.UUID `db:"id" json:"id"`
-	UserID      uuid.UUID `db:"user_id" json:"user_id"`
-	Title       string    `db:"title" json:"title"`
-	Description string    `db:"description" json:"description"`
-	RemindAt    time.Time `db:"remind_at" json:"remind_at"`
-	IsSent      bool      `db:"is_sent" json:"is_sent"`
-	CreatedAt   time.Time `db:"created_at" json:"created_at"`
-	UpdatedAt   time.Time `db:"updated_at" json:"updated_at"`
+	ID          uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
+	UserID      uuid.UUID `gorm:"type:uuid;not null;index" json:"user_id"`
+	Title       string    `gorm:"type:varchar(255);not null" json:"title"`
+	Description string    `gorm:"type:text" json:"description"`
+	RemindAt    time.Time `gorm:"type:timestamptz;not null" json:"remind_at"`
+	IsSent      bool      `gorm:"default:false" json:"is_sent"`
+	CreatedAt   time.Time `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt   time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+}
+
+func (Reminder) TableName() string {
+	return "reminders"
 }

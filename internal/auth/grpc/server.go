@@ -24,7 +24,7 @@ func (s *AuthServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb
 		return nil, status.Error(codes.InvalidArgument, "username and password are required")
 	}
 
-	user, err := s.service.Register(req.Username, req.Password)
+	user, err := s.service.Register(ctx, req.Username, req.Password)
 	if err != nil {
 		return nil, status.Error(codes.AlreadyExists, err.Error())
 	}
@@ -41,7 +41,7 @@ func (s *AuthServer) Login(ctx context.Context, req *pb.LoginRequest) (*pb.Login
 		return nil, status.Error(codes.InvalidArgument, "username and password are required")
 	}
 
-	tokens, err := s.service.Login(req.Username, req.Password)
+	tokens, err := s.service.Login(ctx, req.Username, req.Password)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, "invalid credentials")
 	}
@@ -58,7 +58,7 @@ func (s *AuthServer) Refresh(ctx context.Context, req *pb.RefreshRequest) (*pb.R
 		return nil, status.Error(codes.InvalidArgument, "refresh_token is required")
 	}
 
-	tokens, err := s.service.Refresh(req.RefreshToken)
+	tokens, err := s.service.Refresh(ctx, req.RefreshToken)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, "invalid refresh token")
 	}

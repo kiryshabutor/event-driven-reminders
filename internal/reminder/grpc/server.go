@@ -26,7 +26,7 @@ func (s *ReminderServer) CreateReminder(ctx context.Context, req *pb.CreateRemin
 		return nil, status.Errorf(codes.InvalidArgument, "invalid user_id: %v", err)
 	}
 
-	reminder, err := s.service.Create(userID, req.Title, req.Description, req.RemindAt)
+	reminder, err := s.service.Create(ctx, userID, req.Title, req.Description, req.RemindAt)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -40,7 +40,7 @@ func (s *ReminderServer) GetReminders(ctx context.Context, req *pb.GetRemindersR
 		return nil, status.Errorf(codes.InvalidArgument, "invalid user_id: %v", err)
 	}
 
-	reminders, err := s.service.GetByUserID(userID, req.Status)
+	reminders, err := s.service.GetByUserID(ctx, userID, req.Status)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -63,7 +63,7 @@ func (s *ReminderServer) GetReminder(ctx context.Context, req *pb.GetReminderReq
 		return nil, status.Errorf(codes.InvalidArgument, "invalid id: %v", err)
 	}
 
-	reminder, err := s.service.GetByID(userID, id)
+	reminder, err := s.service.GetByID(ctx, userID, id)
 	if err != nil {
 		return nil, status.Error(codes.NotFound, err.Error())
 	}
@@ -81,7 +81,7 @@ func (s *ReminderServer) UpdateReminder(ctx context.Context, req *pb.UpdateRemin
 		return nil, status.Errorf(codes.InvalidArgument, "invalid id: %v", err)
 	}
 
-	reminder, err := s.service.Update(userID, id, req.Title, req.Description, req.RemindAt)
+	reminder, err := s.service.Update(ctx, userID, id, req.Title, req.Description, req.RemindAt)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -105,7 +105,7 @@ func (s *ReminderServer) DeleteReminder(ctx context.Context, req *pb.DeleteRemin
 		}, nil
 	}
 
-	err = s.service.Delete(userID, id)
+	err = s.service.Delete(ctx, userID, id)
 	if err != nil {
 		return &pb.DeleteReminderResponse{
 			Success: false,

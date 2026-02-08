@@ -6,7 +6,9 @@ import (
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/jmoiron/sqlx"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 type DatabaseConfig struct {
@@ -36,19 +38,23 @@ func (c *DatabaseConfig) ConnectionString() string {
 	)
 }
 
-func ConnectDatabase(config *DatabaseConfig) (*sqlx.DB, error) {
-	db, err := sqlx.Connect("pgx", config.ConnectionString())
+// ConnectGormDatabase returns gorm.DB connection
+func ConnectGormDatabase(config *DatabaseConfig) (*gorm.DB, error) {
+	db, err := gorm.Open(postgres.Open(config.ConnectionString()), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Error),
+	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to DB: %w", err)
+		return nil, fmt.Errorf("failed to connect to DB with GORM: %w", err)
 	}
 
-	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("failed to verify DB connection: %w", err)
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get underlying DB: %w", err)
 	}
 
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(5)
-	db.SetConnMaxLifetime(5 * time.Minute)
+	sqlDB.SetMaxOpenConns(25)
+	sqlDB.SetMaxIdleConns(5)
+	sqlDB.SetConnMaxLifetime(5 * time.Minute)
 
 	return db, nil
 }
