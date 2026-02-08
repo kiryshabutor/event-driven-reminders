@@ -29,14 +29,16 @@ func main() {
 
 	dbConfig := config.LoadDatabaseConfig()
 
-	db, err := config.ConnectDatabase(dbConfig)
+	db, err := config.ConnectGormDatabase(dbConfig)
 	if err != nil {
 		slog.Error("DB connection error", "error", err)
 		os.Exit(1)
 	}
-	defer db.Close()
 
-	slog.Info("Analytics Service: Successfully connected to PostgreSQL")
+	sqlDB, _ := db.DB()
+	defer sqlDB.Close()
+
+	slog.Info("Analytics Service: Successfully connected to PostgreSQL with GORM")
 
 	store := storage.NewPostgresStorage(db)
 	analyticsService := service.NewAnalyticsService(store)

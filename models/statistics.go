@@ -7,14 +7,27 @@ import (
 )
 
 type UserStatistics struct {
-	UserID                  uuid.UUID  `db:"user_id" json:"user_id"`
-	TotalRemindersCreated   int64      `db:"total_reminders_created" json:"total_reminders_created"`
-	TotalRemindersCompleted int64      `db:"total_reminders_completed" json:"total_reminders_completed"`
-	TotalRemindersDeleted   int64      `db:"total_reminders_deleted" json:"total_reminders_deleted"`
-	ActiveReminders         int64      `db:"active_reminders" json:"active_reminders"`
-	CompletionRate          float64    `db:"completion_rate" json:"completion_rate"`
-	FirstReminderAt         *time.Time `db:"first_reminder_at" json:"first_reminder_at"`
-	LastActivityAt          *time.Time `db:"last_activity_at" json:"last_activity_at"`
-	CreatedAt               time.Time  `db:"created_at" json:"created_at"`
-	UpdatedAt               time.Time  `db:"updated_at" json:"updated_at"`
+	UserID                  uuid.UUID  `gorm:"type:uuid;primaryKey" json:"user_id"`
+	TotalRemindersCreated   int64      `gorm:"default:0" json:"total_reminders_created"`
+	TotalRemindersCompleted int64      `gorm:"default:0" json:"total_reminders_completed"`
+	TotalRemindersDeleted   int64      `gorm:"default:0" json:"total_reminders_deleted"`
+	ActiveReminders         int64      `gorm:"default:0" json:"active_reminders"`
+	CompletionRate          float64    `gorm:"type:decimal(5,2);default:0" json:"completion_rate"`
+	FirstReminderAt         *time.Time `json:"first_reminder_at"`
+	LastActivityAt          *time.Time `json:"last_activity_at"`
+	CreatedAt               time.Time  `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt               time.Time  `gorm:"autoUpdateTime" json:"updated_at"`
+}
+
+func (UserStatistics) TableName() string {
+	return "analytics.user_statistics"
+}
+
+type ProcessedEvent struct {
+	EventID     uuid.UUID `gorm:"type:uuid;primaryKey"`
+	ProcessedAt time.Time `gorm:"autoCreateTime"`
+}
+
+func (ProcessedEvent) TableName() string {
+	return "analytics.processed_events"
 }

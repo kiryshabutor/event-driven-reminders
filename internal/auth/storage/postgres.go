@@ -1,74 +1,74 @@
 package storage
 
 import (
+	"context"
 	"errors"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jmoiron/sqlx"
 	"github.com/kiribu/jwt-practice/models"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 type Storage interface {
-	CreateUser(username, password string) (*models.User, error)
-	GetUserByUsername(username string) (*models.User, error)
-	GetUserByID(id uuid.UUID) (*models.User, error)
-	ValidatePassword(username, password string) (*models.User, error)
-	SaveRefreshToken(token string, userID uuid.UUID, expiresAt time.Time) error
-	ValidateRefreshToken(token string) (uuid.UUID, error)
-	DeleteRefreshToken(token string) error
+	CreateUser(ctx context.Context, username, password string) (*models.User, error)
+	GetUserByUsername(ctx context.Context, username string) (*models.User, error)
+	GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, error)
+	ValidatePassword(ctx context.Context, username, password string) (*models.User, error)
+	SaveRefreshToken(ctx context.Context, token string, userID uuid.UUID, expiresAt time.Time) error
+	ValidateRefreshToken(ctx context.Context, token string) (uuid.UUID, error)
+	DeleteRefreshToken(ctx context.Context, token string) error
 }
 
 type PostgresStorage struct {
-	db *sqlx.DB
+	db *gorm.DB
 }
 
-func NewPostgresStorage(db *sqlx.DB) *PostgresStorage {
+func NewPostgresStorage(db *gorm.DB) *PostgresStorage {
 	return &PostgresStorage{db: db}
 }
 
-func (s *PostgresStorage) CreateUser(username, password string) (*models.User, error) {
+func (s *PostgresStorage) CreateUser(ctx context.Context, username, password string) (*models.User, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
 	}
 
-	userID := uuid.Must(uuid.NewV7())
-	var user models.User
-	err = s.db.QueryRowx(
-		`INSERT INTO users (id, username, password_hash) 
-		 VALUES ($1, $2, $3) 
-		 RETURNING id, username, password_hash, created_at`,
-		userID, username, string(hashedPassword),
-	).StructScan(&user)
+	user := &models.User{
+		ID:           uuid.Must(uuid.NewV7()),
+		Username:     username,
+		PasswordHash: string(hashedPassword),
+	}
 
-	if err != nil {
+	result := s.db.WithContext(ctx).Create(user)
+	if result.Error != nil {
 		return nil, errors.New("user with this username already exists")
 	}
 
-	return &user, nil
+	return user, nil
 }
 
-func (s *PostgresStorage) GetUserByUsername(username string) (*models.User, error) {
+func (s *PostgresStorage) GetUserByUsername(ctx context.Context, username string) (*models.User, error) {
 	var user models.User
-	err := s.db.Get(&user, "SELECT * FROM users WHERE username = $1", username)
-	if err != nil {
-		return nil, errors.New("user not found")
-	}
-	return &user, nil
-}
-func (s *PostgresStorage) GetUserByID(id uuid.UUID) (*models.User, error) {
-	var user models.User
-	err := s.db.Get(&user, "SELECT * FROM users WHERE id = $1", id)
-	if err != nil {
+	result := s.db.WithContext(ctx).Where("username = ?", username).First(&user)
+	if result.Error != nil {
 		return nil, errors.New("user not found")
 	}
 	return &user, nil
 }
 
-func (s *PostgresStorage) ValidatePassword(username, password string) (*models.User, error) {
-	user, err := s.GetUserByUsername(username)
+func (s *PostgresStorage) GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
+	var user models.User
+	result := s.db.WithContext(ctx).First(&user, "id = ?", id)
+	if result.Error != nil {
+		return nil, errors.New("user not found")
+	}
+	return &user, nil
+}
+
+func (s *PostgresStorage) ValidatePassword(ctx context.Context, username, password string) (*models.User, error) {
+	user, err := s.GetUserByUsername(ctx, username)
 	if err != nil {
 		return nil, err
 	}
@@ -80,38 +80,31 @@ func (s *PostgresStorage) ValidatePassword(username, password string) (*models.U
 	return user, nil
 }
 
-func (s *PostgresStorage) SaveRefreshToken(token string, userID uuid.UUID, expiresAt time.Time) error {
-	tokenID := uuid.Must(uuid.NewV7())
-	_, err := s.db.Exec(
-		`INSERT INTO refresh_tokens (id, token, user_id, expires_at) VALUES ($1, $2, $3, $4)`,
-		tokenID, token, userID, expiresAt,
-	)
-	return err
+func (s *PostgresStorage) SaveRefreshToken(ctx context.Context, token string, userID uuid.UUID, expiresAt time.Time) error {
+	refreshToken := &models.RefreshToken{
+		ID:        uuid.Must(uuid.NewV7()),
+		Token:     token,
+		UserID:    userID,
+		ExpiresAt: expiresAt,
+	}
+	return s.db.WithContext(ctx).Create(refreshToken).Error
 }
 
-func (s *PostgresStorage) ValidateRefreshToken(token string) (uuid.UUID, error) {
-	var rt struct {
-		UserID    uuid.UUID `db:"user_id"`
-		ExpiresAt time.Time `db:"expires_at"`
-	}
-
-	err := s.db.Get(&rt,
-		`SELECT user_id, expires_at FROM refresh_tokens WHERE token = $1`,
-		token,
-	)
-	if err != nil {
+func (s *PostgresStorage) ValidateRefreshToken(ctx context.Context, token string) (uuid.UUID, error) {
+	var rt models.RefreshToken
+	result := s.db.WithContext(ctx).Where("token = ?", token).First(&rt)
+	if result.Error != nil {
 		return uuid.Nil, errors.New("token not found")
 	}
 
 	if time.Now().After(rt.ExpiresAt) {
-		s.DeleteRefreshToken(token)
+		s.DeleteRefreshToken(ctx, token)
 		return uuid.Nil, errors.New("token expired")
 	}
 
 	return rt.UserID, nil
 }
 
-func (s *PostgresStorage) DeleteRefreshToken(token string) error {
-	_, err := s.db.Exec(`DELETE FROM refresh_tokens WHERE token = $1`, token)
-	return err
+func (s *PostgresStorage) DeleteRefreshToken(ctx context.Context, token string) error {
+	return s.db.WithContext(ctx).Where("token = ?", token).Delete(&models.RefreshToken{}).Error
 }
