@@ -54,8 +54,9 @@ func (c *Consumer) Start() {
 
 		if err != nil {
 			slog.Error("Error processing event", "error", err)
+		} else {
+			c.reader.CommitMessages(ctx, m)
 		}
-		c.reader.CommitMessages(ctx, m)
 	}
 }
 
