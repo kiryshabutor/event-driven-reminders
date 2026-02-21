@@ -48,14 +48,18 @@ func (c *Consumer) Start() {
 			continue
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		err = c.service.ProcessEvent(ctx, event)
+		processCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		err = c.service.ProcessEvent(processCtx, event)
 		cancel()
 
 		if err != nil {
 			slog.Error("Error processing event", "error", err)
 		} else {
-			c.reader.CommitMessages(ctx, m)
+			commitCtx, commitCancel := context.WithTimeout(context.Background(), 5*time.Second)
+			if err := c.reader.CommitMessages(commitCtx, m); err != nil {
+				slog.Error("Error committing message", "error", err, "partition", m.Partition, "offset", m.Offset)
+			}
+			commitCancel()
 		}
 	}
 }
