@@ -1,18 +1,19 @@
 FROM golang:alpine AS builder
 
-WORKDIR /app
+WORKDIR /src
 
-COPY go.mod go.sum ./
-RUN go mod download
+COPY shared/go.mod shared/go.sum ./shared/
+COPY services/notification/go.mod services/notification/go.sum ./services/notification/
+RUN cd services/notification && go mod download
 
-COPY . .
+COPY shared ./shared
+COPY services/notification ./services/notification
 
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /app/notification-service ./cmd/notification-service
+RUN cd services/notification && CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/notification-service ./cmd
 
 FROM alpine:3.19
 
 WORKDIR /app
-
-COPY --from=builder /app/notification-service .
+COPY --from=builder /out/notification-service .
 
 CMD ["./notification-service"]

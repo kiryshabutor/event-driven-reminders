@@ -1,28 +1,26 @@
 FROM golang:alpine AS builder
 
-WORKDIR /app
+WORKDIR /src
 
-COPY go.mod go.sum ./
-RUN go mod download
+COPY shared/go.mod shared/go.sum ./shared/
+COPY services/gateway/go.mod services/gateway/go.sum ./services/gateway/
+RUN cd services/gateway && go mod download
 
-COPY . .
+COPY shared ./shared
+COPY services/gateway ./services/gateway
 
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /app/api-gateway ./cmd/api-gateway
+RUN cd services/gateway && CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/api-gateway ./cmd
 
 FROM alpine:3.19
 
 RUN apk --no-cache add ca-certificates
-
 RUN adduser -D -g '' appuser
 
 WORKDIR /app
-
-COPY --from=builder /app/api-gateway .
+COPY --from=builder /out/api-gateway .
 
 RUN chown -R appuser:appuser /app
-
 USER appuser
 
 EXPOSE 8080
-
 CMD ["./api-gateway"]

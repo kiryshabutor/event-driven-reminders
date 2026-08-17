@@ -4,9 +4,8 @@
 .env.*.local
 
 # Binary
-/jwt-practice
-/auth-service
-/api-gateway
+/bin/
+*.test
 
 # IDE
 .idea/
