@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS reminders_outbox (
     error_message TEXT
 );
 
-CREATE INDEX idx_outbox_pending ON reminders_outbox(status, created_at) 
+CREATE INDEX idx_outbox_pending ON reminders_outbox(status, created_at)
 WHERE status = 'PENDING';
 
 CREATE INDEX idx_outbox_cleanup ON reminders_outbox(status, processed_at)

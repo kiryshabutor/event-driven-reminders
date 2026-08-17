@@ -8,9 +8,4 @@ CREATE TABLE IF NOT EXISTS reminders (
     created_at  TIMESTAMPTZ DEFAULT NOW(),
     updated_at  TIMESTAMPTZ DEFAULT NOW()
 );
-
--- Index for fast user lookup
 CREATE INDEX idx_reminders_user_id ON reminders(user_id);
-
--- Index for scheduler (future use)
-CREATE INDEX idx_reminders_due ON reminders(remind_at) WHERE is_sent = FALSE;
