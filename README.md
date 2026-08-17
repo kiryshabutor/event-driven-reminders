@@ -95,11 +95,19 @@ Analytics Service реализует паттерн **Exactly-Once** для об
 
 ## Структура проекта
 
-*   `/cmd`: Точки входа (main.go) для каждого сервиса.
-*   `/internal`: Внутренняя логика (Biz logic, repository, service).
-*   `/proto`: Protobuf определения для gRPC.
-*   `/migrations`: SQL файлы миграций базы данных.
-*   `/pkg`: Общие библиотеки и утилиты.
+Проект организован как multi-module monorepo:
+
+*   `/shared`: Общий модуль с protobuf-контрактами, wire-типами, константами и логгером.
+*   `/services/auth`: Аутентификация и управление токенами.
+*   `/services/reminder`: Напоминания, outbox и фоновые workers.
+*   `/services/analytics`: Аналитика и обработка lifecycle-событий.
+*   `/services/notification`: Kafka consumer уведомлений.
+*   `/services/gateway`: HTTP API Gateway и gRPC-клиенты.
+*   `/docker`: Инициализация PostgreSQL миграциями сервисов.
+*   `/build`: Dockerfiles для отдельных сервисов.
+
+Каждый сервис имеет собственный `go.mod` и слои `app`, `entity`, `handler`, `gateway`, `service` и `repository`.
+Локальная разработка связывает модули через корневой `go.work` и `replace` на `shared`.
 
 ## API Эндпоинты
 

@@ -1,0 +1,117 @@
+package worker
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"log/slog"
+	"time"
+
+	repositoryentity "github.com/kiribu/jwt-practice/services/reminder/entity/repository"
+	"github.com/kiribu/jwt-practice/services/reminder/gateway/kafka"
+	"github.com/kiribu/jwt-practice/services/reminder/repository"
+	"github.com/kiribu/jwt-practice/shared/consts"
+	"github.com/kiribu/jwt-practice/shared/types"
+)
+
+type OutboxWorker struct {
+	storage              repository.Repository
+	lifecycleProducer    *kafka.Producer
+	notificationProducer *kafka.Producer
+	interval             time.Duration
+	batchSize            int
+}
+
+func NewOutboxWorker(
+	storage repository.Repository,
+	lifecycleProducer *kafka.Producer,
+	notificationProducer *kafka.Producer,
+	interval time.Duration,
+) *OutboxWorker {
+	return &OutboxWorker{
+		storage:              storage,
+		lifecycleProducer:    lifecycleProducer,
+		notificationProducer: notificationProducer,
+		interval:             interval,
+		batchSize:            50,
+	}
+}
+
+func (w *OutboxWorker) Start(ctx context.Context) {
+	ticker := time.NewTicker(w.interval)
+	defer ticker.Stop()
+
+	slog.Info("Outbox Worker started", "interval", w.interval)
+
+	for {
+		select {
+		case <-ctx.Done():
+			slog.Info("Stopping Outbox Worker...")
+			return
+		case <-ticker.C:
+			w.processOutbox(ctx)
+		}
+	}
+}
+
+func (w *OutboxWorker) processOutbox(ctx context.Context) {
+	events, err := w.storage.GetPendingOutboxEvents(ctx, w.batchSize)
+	if err != nil {
+		slog.Error("Error fetching outbox events", "error", err)
+		return
+	}
+
+	if len(events) > 0 {
+		slog.Info("Processing outbox events", "count", len(events))
+	}
+
+	for _, event := range events {
+		if err := w.processEvent(event); err != nil {
+			slog.Error("Error processing outbox event", "event_id", event.ID, "error", err)
+
+			if err := w.storage.IncrementOutboxRetryCount(ctx, event.ID, err.Error()); err != nil {
+				slog.Error("Failed to update retry count", "event_id", event.ID, "error", err)
+			}
+			continue
+		}
+
+		if err := w.storage.MarkOutboxEventAsSent(ctx, event.ID); err != nil {
+			slog.Error("Failed to mark event as sent", "event_id", event.ID, "error", err)
+		}
+	}
+}
+
+func (w *OutboxWorker) processEvent(event repositoryentity.OutboxEvent) error {
+	key := fmt.Sprintf("%d", event.UserID)
+
+	switch event.EventType {
+	case consts.EventCreated, consts.EventUpdated, consts.EventDeleted, consts.EventNotificationSent:
+		var lifecycleEvent types.LifecycleEvent
+		if err := json.Unmarshal(event.Payload, &lifecycleEvent); err != nil {
+			return fmt.Errorf("failed to unmarshal lifecycle event: %w", err)
+		}
+
+		if err := w.lifecycleProducer.SendEvent(key, lifecycleEvent); err != nil {
+			return fmt.Errorf("failed to send to lifecycle topic: %w", err)
+		}
+
+		slog.Debug("Sent event to reminder_lifecycle", "type", event.EventType, "event_id", event.ID, "reminder_id", event.AggregateID)
+
+	case consts.EventNotification:
+		var reminder types.Reminder
+		if err := json.Unmarshal(event.Payload, &reminder); err != nil {
+			return fmt.Errorf("failed to unmarshal reminder: %w", err)
+		}
+
+		if err := w.notificationProducer.SendEvent(key, reminder); err != nil {
+			return fmt.Errorf("failed to send to notifications topic: %w", err)
+		}
+
+		slog.Debug("Sent notification_trigger event", "event_id", event.ID, "reminder_id", event.AggregateID)
+
+	default:
+		return fmt.Errorf("unknown event type: %s", event.EventType)
+	}
+
+	return nil
+}
